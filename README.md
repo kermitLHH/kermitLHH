@@ -10,12 +10,12 @@
 
 <sub>Python · C++ · PyTorch · Linux</sub>
 
-### Contributions
+### Monthly Contributions
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake-dark.svg" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake.svg" />
-  <img alt="A snake eating my GitHub contribution grid" src="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake.svg" width="100%" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake-monthly-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake-monthly.svg" />
+  <img alt="A snake eating this month's GitHub contributions" src="https://raw.githubusercontent.com/kermitLHH/kermitLHH/output/github-snake-monthly.svg" width="320" />
 </picture>
 
-<sub>Updated daily · Animation by <a href="https://github.com/Platane/snk">Platane/snk</a> · Icons by <a href="https://github.com/tandpfun/skill-icons">Skill Icons</a></sub>
+<sub>Current month · Updated daily · Calendar in UTC · Animation by <a href="https://github.com/Platane/snk">Platane/snk</a> · Icons by <a href="https://github.com/tandpfun/skill-icons">Skill Icons</a></sub>
