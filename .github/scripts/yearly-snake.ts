@@ -10,14 +10,14 @@ import { snake4 } from "@snk/types/__fixtures__/snake";
 const levels = { NONE: 0, FIRST_QUARTILE: 1, SECOND_QUARTILE: 2, THIRD_QUARTILE: 3, FOURTH_QUARTILE: 4 };
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-export function monthWindow(now = new Date()) {
+export function yearWindow(now = new Date()) {
   if (!Number.isFinite(now.getTime())) throw new Error("Invalid date");
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const from = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
   return { from: from.toISOString(), to: now.toISOString() };
 }
 
-export function monthlyCells(days, now = new Date()) {
-  const { from, to } = monthWindow(now);
+export function yearlyCells(days, now = new Date()) {
+  const { from, to } = yearWindow(now);
   const start = from.slice(0, 10);
   const end = to.slice(0, 10);
   const byDate = new Map();
@@ -31,13 +31,14 @@ export function monthlyCells(days, now = new Date()) {
   }
   const offset = new Date(from).getUTCDay();
   const cells = [];
-  for (let day = 1; day <= now.getUTCDate(); day++) {
-    const date = start.slice(0, 8) + String(day).padStart(2, "0");
+  const dayCount = Math.floor((now.getTime() - Date.parse(from)) / 86400000) + 1;
+  for (let day = 0; day < dayCount; day++) {
+    const date = new Date(Date.parse(from) + day * 86400000).toISOString().slice(0, 10);
     const entry = byDate.get(date);
     if (!entry) throw new Error(`Missing contribution data for ${date}`);
     cells.push({
-      x: (offset + day - 1) % 7,
-      y: Math.floor((offset + day - 1) / 7),
+      x: Math.floor((offset + day) / 7),
+      y: (offset + day) % 7,
       date,
       count: entry.contributionCount,
       level: entry.contributionCount === 0 ? 0 : levels[entry.contributionLevel],
@@ -46,14 +47,14 @@ export function monthlyCells(days, now = new Date()) {
   return cells;
 }
 
-export function renderMonth(cells, now, dark) {
-  const rows = Math.max(...cells.map(c => c.y)) + 1;
-  const grid = createEmptyGrid(7, rows);
+export function renderYear(cells, now, dark) {
+  const columns = Math.max(4, ...cells.map(c => c.x + 1));
+  const grid = createEmptyGrid(columns, 7);
   for (const cell of cells) setColor(grid, cell.x, cell.y, cell.level);
   const chain = getBestRoute(grid, snake4);
-  // Keep the snake moving even at the start of a month with no contributions.
+  // Keep the snake moving at the start of a year with no contributions.
   if (chain.length === 1) {
-    const idlePose = createSnakeFromCells([0, 1, 2, 3].map(x => ({ x, y: rows })));
+    const idlePose = createSnakeFromCells([0, 1, 2, 3].map(x => ({ x, y: 7 })));
     chain.push(...getPathToPose(chain[chain.length - 1], idlePose));
   }
   chain.push(...getPathToPose(chain[chain.length - 1], snake4));
@@ -67,31 +68,31 @@ export function renderMonth(cells, now, dark) {
     colorEmpty: palette[0],
     colorDotBorder: dark ? "#ffffff0a" : "#1b1f230a",
     colorSnake: dark ? "#38bdf8" : "#0ea5e9",
-    sizeCell: 32,
-    sizeDot: 25,
-    sizeDotBorderRadius: 5,
+    sizeCell: 16,
+    sizeDot: 12,
+    sizeDotBorderRadius: 2,
   };
-  let animation = createSvg(grid, cells, chain, options, { stepDurationMs: Math.max(130, 7000 / chain.length) });
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((name, x) =>
-    `<text x="${x * 32 + 16}" y="-43" fill="${muted}" font-size="10" text-anchor="middle">${name}</text>`
+  let animation = createSvg(grid, cells, chain, options, { stepDurationMs: Math.max(100, 7000 / chain.length) });
+  animation = animation.replace("<svg ", '<svg x="56" y="68" ');
+  const monthLabels = cells.filter(cell => cell.date.endsWith("-01")).map(cell =>
+    `<text x="${72 + cell.x * 16}" y="76" fill="${muted}" font-size="12">${months[Number(cell.date.slice(5, 7)) - 1].slice(0, 3)}</text>`
   ).join("");
-  const dates = cells.map(cell =>
-    `<text x="${cell.x * 32 + 16}" y="${cell.y * 32 + 20}" text-anchor="middle" font-size="10" fill="${dark ? "#ffffff" : "#24292f"}" pointer-events="none">${Number(cell.date.slice(8))}</text>`
+  const weekdays = [["Mon", 1], ["Wed", 3], ["Fri", 5]].map(([name, y]) =>
+    `<text x="16" y="${110 + Number(y) * 16}" fill="${muted}" font-size="12">${name}</text>`
   ).join("");
-  // Put the dates above the grid but below the snake, so the head covers a date as it eats.
-  const snakeStart = animation.indexOf('<rect class="s ');
-  if (snakeStart < 0) throw new Error("Upstream SVG structure changed");
-  animation = animation.slice(0, snakeStart) + weekdays + dates + animation.slice(snakeStart);
-  animation = animation.replace("<svg ", '<svg x="16" y="76" ');
   const total = cells.reduce((sum, cell) => sum + cell.count, 0);
-  const title = `${months[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
-  const height = (rows + 5) * 32 + 76;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="${height}" viewBox="0 0 320 ${height}" role="img" aria-labelledby="title description" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
-<title id="title">${title} contribution snake</title>
-<desc id="description">${total} contributions from ${cells[0].date} through ${cells[cells.length - 1].date}. Calendar dates use UTC. Only this month's recorded days are displayed.</desc>
-<text x="16" y="29" fill="${text}" font-size="21" font-weight="600">${title}</text>
-<text x="16" y="53" fill="${muted}" font-size="12">1–${now.getUTCDate()} ${months[now.getUTCMonth()]} · ${total} contribution${total === 1 ? "" : "s"} · UTC</text>
+  const width = Math.max(360, (columns + 2) * 16 + 72);
+  const title = `${total} contribution${total === 1 ? "" : "s"} in ${now.getUTCFullYear()}`;
+  const legendX = width - 164;
+  const legend = palette.map((color, i) => `<rect x="${legendX + 35 + i * 16}" y="265" width="12" height="12" rx="2" fill="${color}"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="286" viewBox="0 0 ${width} 286" role="img" aria-labelledby="title description" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+<title id="title">${title} — contribution snake</title>
+<desc id="description">${total} contributions from ${cells[0].date} through ${cells[cells.length - 1].date}. Calendar dates use UTC. Only this calendar year's recorded days are displayed.</desc>
+<text x="16" y="28" fill="${text}" font-size="20" font-weight="600">${title}</text>
+<text x="16" y="48" fill="${muted}" font-size="11">Jan 1 – ${months[now.getUTCMonth()].slice(0, 3)} ${now.getUTCDate()} · UTC</text>
+${monthLabels}${weekdays}
 ${animation}
+<text x="${legendX}" y="275" fill="${muted}" font-size="11">Less</text>${legend}<text x="${legendX + 119}" y="275" fill="${muted}" font-size="11">More</text>
 </svg>\n`;
 }
 
@@ -102,7 +103,7 @@ async function main() {
   const now = new Date();
   const response = await fetch("https://api.github.com/graphql", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "User-Agent": "monthly-contribution-snake" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "User-Agent": "yearly-contribution-snake" },
     signal: AbortSignal.timeout(30000),
     body: JSON.stringify({
       query: `query ($login: String!, $from: DateTime!, $to: DateTime!) {
@@ -112,18 +113,18 @@ async function main() {
           }
         }
       }`,
-      variables: { login: username, ...monthWindow(now) },
+      variables: { login: username, ...yearWindow(now) },
     }),
   });
   if (!response.ok) throw new Error(`GitHub contribution request failed (${response.status})`);
   const result = await response.json();
   if (result.errors || !result.data?.user) throw new Error("GitHub did not return contribution data");
   const days = result.data.user.contributionsCollection.contributionCalendar.weeks.flatMap(week => week.contributionDays);
-  const cells = monthlyCells(days, now);
+  const cells = yearlyCells(days, now);
   await mkdir("dist", { recursive: true });
   for (const dark of [false, true]) {
-    const file = `dist/github-snake-monthly${dark ? "-dark" : ""}.svg`;
-    await writeFile(file, renderMonth(cells, now, dark));
+    const file = `dist/github-snake-yearly${dark ? "-dark" : ""}.svg`;
+    await writeFile(file, renderYear(cells, now, dark));
     console.log(`Generated ${file}: ${cells[0].date} to ${cells[cells.length - 1].date}`);
   }
 }

@@ -1,4 +1,4 @@
-name: Update monthly contribution snake
+name: Update yearly contribution snake
 
 on:
   schedule:
@@ -35,20 +35,20 @@ jobs:
           path: .snk-upstream
           persist-credentials: false
 
-      - name: Build month-specific generator
+      - name: Build year-specific generator
         run: |
-          npx --yes --package=esbuild@0.25.12 esbuild .github/scripts/monthly-snake.ts \
+          npx --yes --package=esbuild@0.25.12 esbuild .github/scripts/yearly-snake.ts \
             --bundle --platform=node --format=esm --target=node20 \
             --alias:@snk/types=./.snk-upstream/packages/types \
             --alias:@snk/solver=./.snk-upstream/packages/solver \
             --alias:@snk/svg-creator=./.snk-upstream/packages/svg-creator \
-            --outfile=dist/monthly-snake.mjs
+            --outfile=dist/yearly-snake.mjs
 
-      - name: Validate month boundaries and rendering
-        run: node --test .github/scripts/monthly-snake.test.mjs
+      - name: Validate year boundaries and rendering
+        run: node --test .github/scripts/yearly-snake.test.mjs
 
-      - name: Generate this month's contribution snakes
-        run: node dist/monthly-snake.mjs
+      - name: Generate this year's contribution snakes
+        run: node dist/yearly-snake.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -57,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           animation_dir="$(mktemp -d)"
-          cp dist/github-snake-monthly.svg dist/github-snake-monthly-dark.svg "$animation_dir/"
+          cp dist/github-snake-yearly.svg dist/github-snake-yearly-dark.svg "$animation_dir/"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -70,12 +70,12 @@ jobs:
             git rm -rf --ignore-unmatch .
           fi
 
-          cp "$animation_dir/github-snake-monthly.svg" "$animation_dir/github-snake-monthly-dark.svg" .
-          git add -- github-snake-monthly.svg github-snake-monthly-dark.svg
+          cp "$animation_dir/github-snake-yearly.svg" "$animation_dir/github-snake-yearly-dark.svg" .
+          git add -- github-snake-yearly.svg github-snake-yearly-dark.svg
           if git diff --cached --quiet; then
             echo "Contribution animation is already up to date."
             exit 0
           fi
 
-          git commit -m "Update monthly contribution snake"
+          git commit -m "Update yearly contribution snake"
           git push origin HEAD:output
